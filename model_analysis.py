@@ -54,11 +54,11 @@ _s=psspy.getdefaultchar()
 ##############################################################################
 ## Instrucciones para leer los casos de estudio y para simular                        ##
 ##############################################################################
-#ruta= r"""C:\mario\trabajos2\viesgo_applus_escenarios_red\simulacion\escenarios_sin_con\ """
-ruta= r"""C:\David\PSSE_Viesgo\ """
+ruta= r"C:\mario\trabajos2\viesgo_applus_escenarios_red\simulacion\psse"
+#ruta= r"C:\David\PSSE_Viesgo"
 #CASOraw= ruta + r"RDF_Caso_Base_2019_Pcc_wind10_2.raw"
-CASOsav= ruta + r"RDF_Caso_Base_2019_Pcc_wind10_2.sav"
-SALIDALINEA= ruta + r"Salida.txt"
+CASOsav= ruta + r"\RDF_Caso_Base_2019_Pcc_wind10_2.sav"
+SALIDALINEA= ruta + r"\Salida.txt"
 psspy.case(CASOsav)
 #psspy.fnsl([0,0,0,1,1,1,99,0])
 #psspy.save(CASOsav)
@@ -132,7 +132,7 @@ Nlinea132_sindatosZ = 0
 
 
 # Create a workbook and add a worksheet.
-workbook = xlsxwriter.Workbook('lines_1.xlsx')
+workbook = xlsxwriter.Workbook(ruta + r"\lineas_1.xlsx")
 worksheet = workbook.add_worksheet()
 
 # Start from the first cell. Rows and columns are zero indexed.
@@ -225,9 +225,7 @@ print('Número total de líneas de 132 kV sin datos de secuencia cero: ' + str(Nli
 #############################################################################
 ## Lectura de datos disponibles sobre las líneas de 132 kV
 #############################################################################
-#ruta_datos= r"""C:\mario\trabajos2\viesgo_applus_escenarios_red\simulacion"""
-ruta_datos= r"""C:\David\PSSE_Viesgo"""
-datos_lineas= ruta_datos + r"\PSSE_Listado_LATs_132kV.xlsx"
+datos_lineas= ruta + r"\PSSE_Listado_LATs_132kV.xlsx"
 
 ### Posible error. Instalar paquete xlrd: conda install -c anaconda xlrd (habiendo activado el entorno python2)
 
@@ -242,7 +240,7 @@ print('Datos disponibles de secuencia cero: ' + str(Num_lineas-Num_NaN))
 ## Lectura de datos del archivo generado con líneas de 132 kV.
 ## Comparativa de datos disponibles
 #############################################################################
-datos_lineas_modelo = ruta_datos + r"\lines_1.xlsx"
+datos_lineas_modelo = ruta + r"\lineas_1.xlsx"
 df_lineas132_modelo = pd.read_excel(datos_lineas_modelo) #, sheet_name='Sheet1' )
 #Se añaden los valores leídos del listado proporcionado en columnas nuevas
 df_lineas132_modelo["R[pu]_med"] = ""
@@ -298,7 +296,7 @@ for idx, row in df_lineas132_modelo.iterrows():
         
 
 #Se guarda el resultado en un csv
-datos_lineas_mod = ruta_datos + r"\datos_lineas132_mod.csv"        
+datos_lineas_mod = ruta + r"\datos_lineas132_mod.csv"        
 df_lineas132_modelo.to_csv(datos_lineas_mod,  decimal=',', sep=';', encoding='latin9', index=False, header=True)
 
 
