@@ -54,8 +54,8 @@ _s=psspy.getdefaultchar()
 ##############################################################################
 ## Instrucciones para leer los casos de estudio y para simular                        ##
 ##############################################################################
-ruta= r"C:\mario\trabajos2\viesgo_applus_escenarios_red\simulacion\psse"
-#ruta= r"C:\David\PSSE_Viesgo"
+#ruta= r"C:\mario\trabajos2\viesgo_applus_escenarios_red\simulacion\psse"
+ruta= r"C:\David\PSSE_Viesgo"
 #CASOraw= ruta + r"RDF_Caso_Base_2019_Pcc_wind10_2.raw"
 CASOsav= ruta + r"\RDF_Caso_Base_2019_Pcc_wind10_2.sav"
 SALIDALINEA= ruta + r"\Salida.txt"
@@ -304,14 +304,16 @@ df_lineas132_modelo.to_csv(datos_lineas_mod,  decimal=',', sep=';', encoding='la
 
 
 #############################################################################
-## Recorrido de los buses para identificar los que tienen conectado un generador.
+## Recorrer los buses para identificar los que tienen conectado un generador y son de 132 KV.
 #############################################################################
 BUSESGEN=[]
 BUSESGEN_NAME=[]
 
 for nb in busnumbers[0]:
+    bus_index = busnumbers[0].index(nb)
+    voltage = busvoltages[0][bus_index]
     ierr, cmpval = psspy.gendat(nb)
-    if (ierr == 0):# or ierr == 4):
+    if (ierr == 0 and voltage == 132.0):# or ierr == 4):
         # print( busnames[0][bus_index])
         BUSESGEN.append(nb)
-        BUSESGEN_NAME.append([nb, psspy.notona(nb)[1], cmpval])
+        BUSESGEN_NAME.append([nb, psspy.notona(nb)[1], voltage, cmpval])
