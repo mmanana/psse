@@ -215,6 +215,7 @@ for linea in RAMAS:
 
 workbook.close()
 
+print('********************************************************************')
 print('Total km líneas de 132 kV: ' + str(total_kmlinea132))
 print('Número total de líneas de 132 kV: ' + str(Ntotal_linea132))
 print('Total km líneas de 132 kV sin datos: ' + str(kmlinea132_sindatos))
