@@ -316,3 +316,18 @@ for nb in busnumbers[0]:
         # print( busnames[0][bus_index])
         BUSESGEN.append(nb)
         BUSESGEN_NAME.append([nb, psspy.notona(nb)[1], cmpval])
+        
+        
+############################################################################
+## 
+## Cambiar valores de una línea
+##
+############################################################################
+intgar  = [0]
+# [ R_Z, X_Z, ...]
+realgar = [0.1, 0.2, 0, 0, 0, 0, 0, 3]
+ierr = psspy.seq_branch_data_3( 4, 907, '1', intgar, realgar)
+print( str(ierr))
+
+ierr = psspy.file_overwrite( 1) # overwrite       
+ierr = psspy.save('*') # salvar fichero con datos actualizados
