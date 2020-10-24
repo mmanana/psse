@@ -30,6 +30,7 @@ warnings.filterwarnings('ignore', category=PendingDeprecationWarning)
 import numpy as np
 import pandas as pd
 import xlsxwriter
+import pyodbc 
 
 
 ##############################################################################
@@ -121,7 +122,7 @@ print '\n\n---------------------------------------\n'
 
 
 ##############################################################################
-## Instrucciones para obtener los valore de las líneas de 132 kV
+## Instrucciones para obtener los valores de las líneas de 132 kV
 ##############################################################################
 total_kmlinea132 = 0
 kmlinea132_sindatos = 0
@@ -143,10 +144,21 @@ worksheet.write(row, col, 'From Bus Number')
 col += 1
 worksheet.write(row, col, 'Subestacion 1')
 col += 1
+
+worksheet.write(row, col, 'Area Num 1')
+col += 1
+
 worksheet.write(row, col, 'To Bus Number')
 col += 1
 worksheet.write(row, col, 'Subestacion 2')
 col += 1
+
+worksheet.write(row, col, 'Area Num 2')
+col += 1
+
+worksheet.write(row, col, 'Linea ID')
+col += 1
+
 worksheet.write(row, col, 'Length (km)')
 col += 1
 worksheet.write(row, col, 'R(pu)')
@@ -167,11 +179,17 @@ for linea in RAMAS:
     bus_index = busnumbers[0].index(bus_i)
     voltage_i = busvoltages[0][bus_index]
     name_i = busnames[0][bus_index]
+    
+    bus_i_area_num = psspy.busint(bus_i, 'AREA')
+    
     bus_f = linea[1]
     ckt = linea[2]
     bus_index = busnumbers[0].index(bus_f)
     voltage_f = busvoltages[0][bus_index]
     name_f = busnames[0][bus_index]
+    
+    bus_f_area_num = psspy.busint(bus_f, 'AREA')
+    
     R_line = 0
     X_line = 0
     RZ_line = 0
@@ -192,10 +210,21 @@ for linea in RAMAS:
     col += 1
     worksheet.write(row, col, name_i)
     col += 1
+    
+    worksheet.write(row, col, bus_i_area_num[1])
+    col += 1
+    
     worksheet.write(row, col, bus_f)
     col += 1
     worksheet.write(row, col, name_f)
     col += 1
+    
+    worksheet.write(row, col, bus_f_area_num[1])
+    col += 1
+    
+    worksheet.write(row, col, linea[2]) #ID de la línea
+    col += 1
+    
     worksheet.write(row, col, round(line_length,2))
     col += 1
     worksheet.write(row, col, R_line)
@@ -238,7 +267,7 @@ print('Datos disponibles de secuencia cero: ' + str(Num_lineas-Num_NaN))
 
 #############################################################################
 ## Lectura de datos del archivo generado con líneas de 132 kV.
-## Comparativa de datos disponibles
+## Comparativa de datos disponibles para incluir las mediciones en campo
 #############################################################################
 datos_lineas_modelo = ruta + r"\lineas_1.xlsx"
 df_lineas132_modelo = pd.read_excel(datos_lineas_modelo) #, sheet_name='Sheet1' )
@@ -301,21 +330,153 @@ df_lineas132_modelo.to_csv(datos_lineas_mod,  decimal=',', sep=';', encoding='la
 
 
 
+#############################################################################
+## Filtrado de las líneas de 132 kV para dejar únicamente las de zona Viesgo
+## Se dejan también las líneas que empiezan o acaban en otra zona.
+#############################################################################
+df_lineas132_viesgo = []
+df_lineas132_viesgo = df_lineas132_modelo[(df_lineas132_modelo['Area Num 1'] == 10) | (df_lineas132_modelo['Area Num 2'] == 10)]
+datos_lineas_mod = ruta + r"\datos_lineas132_zona_Viesgo.csv" 
+df_lineas132_viesgo.to_csv(datos_lineas_mod,  decimal=',', sep=';', encoding='latin9', index=False, header=True)
+
+
+
 
 
 #############################################################################
-## Recorrer los buses para identificar los que tienen conectado un generador y son de 132 KV.
+## Recorrer los buses para identificar los que tienen conectado un generador, 
+## son de 132 kV y son de la zona Viesgo.
 #############################################################################
-BUSESGEN=[]
-BUSESGEN_NAME=[]
+BUSESGEN_132=[]
+BUSESGEN_NAME_132=[]
+
+#bus_i_area_num = psspy.busint(bus_i, 'AREA')
 
 for nb in busnumbers[0]:
     bus_index = busnumbers[0].index(nb)
     voltage = busvoltages[0][bus_index]
+    bus_i_area_num = psspy.busint(nb, 'AREA')
     ierr, cmpval = psspy.gendat(nb)
-    if (ierr == 0 and voltage == 132.0):# or ierr == 4):
-        # print( busnames[0][bus_index])
-        BUSESGEN.append(nb)
-        BUSESGEN_NAME.append([nb, psspy.notona(nb)[1], voltage, cmpval])
-        
     
+    #if (ierr == 0 and voltage == 132.0):# or ierr == 4):
+    if (ierr == 0 or ierr == 4) and voltage == 132.0 and bus_i_area_num[1] == 10:
+#        print(bus_i_area_num[1],nb,  bus_index, voltage)
+#         print( busnames[0][bus_index])
+        BUSESGEN_132.append(nb)
+        BUSESGEN_NAME_132.append([nb, psspy.notona(nb)[1], bus_i_area_num[1], voltage, cmpval])
+        
+#Columnas de la lista BUSESGEN_NAME_132:
+#['Bus_Number','BUS_NAME', 'Base_kV', 'Area_Num', 'Complex_generation']
+
+
+
+#############################################################################
+## Recorrer los buses de 132 kV con generador conectado y obtener el número de 
+## generadores y el id de cada uno.
+#############################################################################
+# Diferentes IDs de generadores localizados en zona Viesgo (10): 
+#1, 2, 3, 4, 5, 6, 7
+#A, B, C, D, E
+#PC, EO
+
+GENERADORES_132=[]
+lista_ids = ['1', '2', '3', '4', '5', '6', '7', 'A', 'B', 'C', 'D', 'E', 'PC', 'EO']
+i=0
+for nb in BUSESGEN_132:
+    for id_gen in lista_ids:
+        ierr, rval = psspy.macdat(nb, id_gen, 'P')
+        if (ierr == 0 or ierr == 4):
+            GENERADORES_132.append([nb, psspy.notona(nb)[1], id_gen, ierr, rval])
+#    print(i, nb, ierr, rval)
+#Columnas de la lista GENERADORES_132: 
+#['Bus_Number', 'BUS_NAME', 'ID_generator', 'ierr', 'Machine_loading_MW']
+    
+    
+#ierrA, rvalA = psspy.macdat(29, 'A', 'P')
+#ierrB, rvalB = psspy.macdat(29, 'B', 'P')
+#ierrC, rvalC = psspy.macdat(29, 'C', 'P')
+#ierrA, ierrB, ierrC
+#rvalA, rvalB, rvalC
+            
+            
+            
+#############################################################################
+## Recorrer las líneas de 132 kV de la zona Viesgo y guardar los resultados en
+## las tablas SQL
+#############################################################################
+ #Definición de la conexión con la DB
+conn = pyodbc.connect('Driver={SQL Server};'
+                      'Server=193.144.190.81;'
+                      'Database=Simulaciones_2020;'
+                      'UID=user;'
+                      'PWD=1234')
+                      #'Trusted_Connection=yes;')
+
+cursor = conn.cursor()
+
+#for lineas in df_lineas132_viesgo.itertuples():
+for idx, lineas in df_lineas132_viesgo.iterrows():
+#    print(lineas)
+    #No entiendo porque con itertuples lineas[0] es un índice.
+#    print(int(lineas['Linea ID']))
+#    print(type(lineas[0]))
+#    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas[1]),int(lineas[4]), str(lineas[7]), 'AMPS')
+    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'AMPS')
+    ierr_P, rval_P = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'P')
+    ierr_Q, rval_Q = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'Q')
+#    print(ierr_AMPS,rval_AMPS)
+#    print(ierr_P, rval_P )
+#    print(ierr_Q, rval_Q )
+    
+    nombre_tabla = "OUTPUT_" + lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_') + "_" + lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_') + "_" + str(lineas['Linea ID'])
+    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, AMPS, P, Q) VALUES (-1, " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
+#    print(instruccion_insert)
+    cursor.execute(instruccion_insert)
+    conn.commit()
+    
+    
+cursor.close()
+del cursor
+
+
+
+#############################################################################
+## Recorrer las líneas de 132 kV de la zona Viesgo y obtener la tensión en todos
+## los buses
+#############################################################################
+TENSION_BUSES_132 = []
+for idx, lineas in df_lineas132_viesgo.iterrows():
+    ierr_orig, rval_orig = psspy.busdat(lineas['From Bus Number'], 'KV')
+    ierr_dest, rval_dest = psspy.busdat(lineas['To Bus Number'], 'KV')
+    TENSION_BUSES_132.append([int(lineas['From Bus Number']), str(lineas['Subestacion 1']), ierr_orig, rval_orig])
+    TENSION_BUSES_132.append([int(lineas['To Bus Number']), str(lineas['Subestacion 2']), ierr_dest, rval_dest])
+#Se eliminan los valores duplicados
+#TENSION_BUSES_132 = list(dict.fromkeys(TENSION_BUSES_132))
+#TENSION_BUSES_132 = list(set(TENSION_BUSES_132))
+temp = []
+[temp.append(x) for x in TENSION_BUSES_132 if x not in temp]
+#Se ordena por número de bus
+TENSION_BUSES_132 = sorted(temp, key=lambda num_bus : num_bus[0])
+
+
+
+
+
+
+
+#print('Info inicial. Tensión bus inicio y fin, corriente línea y potencia generador.')
+#print(psspy.busdat(109, 'KV'), 'ierr, kV inicio')
+#print(psspy.busdat(941, 'KV'), 'ierr, kV fin')
+#print(psspy.brnmsc(109, 941, '1', 'AMPS'), 'ierr, A linea')
+#print(psspy.macdat(109, '1', 'P'), 'ierr, MW')
+#
+#print('Info tras el cambio. Tensión bus inicio y fin, corriente línea y potencia generador.')
+#print(psspy.busdat(109, 'KV'), 'ierr, kV inicio')
+#print(psspy.busdat(941, 'KV'), 'ierr, kV fin')
+#print(psspy.brnmsc(109, 941, '1', 'AMPS'), 'ierr, A linea')
+#print(psspy.macdat(109, '1', 'P'), 'ierr, MW')
+#
+#
+#psspy.machine_data_2(109,'1',[psspy.getdefaultint()],[142.25999450683594])
+#psspy.fdns([0,0,0,1,1,1,99,0])
+#U=psspy.solv()
