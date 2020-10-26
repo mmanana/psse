@@ -102,7 +102,7 @@ print BUSLIST
 print '\n\n-----------------------------------------------\n'
 
 ##############################################################################
-## Instrucciones para obtener las líneas conectadas a los buses de 132 kV
+## Instrucciones para obtener las lÃ­neas conectadas a los buses de 132 kV
 ##############################################################################
 p=0
 RAMAS=[]
@@ -123,7 +123,7 @@ print '\n\n---------------------------------------\n'
 
 
 ##############################################################################
-## Instrucciones para obtener los valores de las líneas de 132 kV
+## Instrucciones para obtener los valores de las lÃ­neas de 132 kV
 ##############################################################################
 total_kmlinea132 = 0
 kmlinea132_sindatos = 0
@@ -223,7 +223,7 @@ for linea in RAMAS:
     worksheet.write(row, col, bus_f_area_num[1])
     col += 1
     
-    worksheet.write(row, col, linea[2]) #ID de la línea
+    worksheet.write(row, col, linea[2]) #ID de la lÃ­nea
     col += 1
     
     worksheet.write(row, col, round(line_length,2))
@@ -245,15 +245,15 @@ for linea in RAMAS:
 
 workbook.close()
 
-print('Total km líneas de 132 kV: ' + str(total_kmlinea132))
-print('Número total de líneas de 132 kV: ' + str(Ntotal_linea132))
-print('Total km líneas de 132 kV sin datos: ' + str(kmlinea132_sindatos))
-print('Número total de líneas de 132 kV sin datos: ' + str(Nlinea132_sindatos))
-print('Número total de líneas de 132 kV sin datos de secuencia cero: ' + str(Nlinea132_sindatosZ))
+print('Total km lÃ­neas de 132 kV: ' + str(total_kmlinea132))
+print('NÃºmero total de lÃ­neas de 132 kV: ' + str(Ntotal_linea132))
+print('Total km lÃ­neas de 132 kV sin datos: ' + str(kmlinea132_sindatos))
+print('NÃºmero total de lÃ­neas de 132 kV sin datos: ' + str(Nlinea132_sindatos))
+print('NÃºmero total de lÃ­neas de 132 kV sin datos de secuencia cero: ' + str(Nlinea132_sindatosZ))
 
 
 #############################################################################
-## Lectura de datos disponibles sobre las líneas de 132 kV
+## Lectura de datos disponibles sobre las lÃ­neas de 132 kV
 #############################################################################
 datos_lineas= ruta + r"\PSSE_Listado_LATs_132kV.xlsx"
 
@@ -267,12 +267,12 @@ print('Datos disponibles de secuencia cero: ' + str(Num_lineas-Num_NaN))
 
 
 #############################################################################
-## Lectura de datos del archivo generado con líneas de 132 kV.
+## Lectura de datos del archivo generado con lÃ­neas de 132 kV.
 ## Comparativa de datos disponibles para incluir las mediciones en campo
 #############################################################################
 datos_lineas_modelo = ruta + r"\lineas_1.xlsx"
 df_lineas132_modelo = pd.read_excel(datos_lineas_modelo) #, sheet_name='Sheet1' )
-#Se añaden los valores leídos del listado proporcionado en columnas nuevas
+#Se aÃ±aden los valores leÃ­dos del listado proporcionado en columnas nuevas
 df_lineas132_modelo["R[pu]_med"] = ""
 df_lineas132_modelo["Delta_R[pu]_med"] = ""
 df_lineas132_modelo["X[pu]_med"] = ""
@@ -332,8 +332,8 @@ df_lineas132_modelo.to_csv(datos_lineas_mod,  decimal=',', sep=';', encoding='la
 
 
 #############################################################################
-## Filtrado de las líneas de 132 kV para dejar únicamente las de zona Viesgo
-## Se dejan también las líneas que empiezan o acaban en otra zona.
+## Filtrado de las lÃ­neas de 132 kV para dejar Ãºnicamente las de zona Viesgo
+## Se dejan tambiÃ©n las lÃ­neas que empiezan o acaban en otra zona.
 #############################################################################
 df_lineas132_viesgo = []
 df_lineas132_viesgo = df_lineas132_modelo[(df_lineas132_modelo['Area Num 1'] == 10) | (df_lineas132_modelo['Area Num 2'] == 10)]
@@ -372,7 +372,7 @@ for nb in busnumbers[0]:
 
 
 #############################################################################
-## Recorrer los buses de 132 kV con generador conectado y obtener el número de 
+## Recorrer los buses de 132 kV con generador conectado y obtener el nÃºmero de 
 ## generadores y el id de cada uno.
 #############################################################################
 # Diferentes IDs de generadores localizados en zona Viesgo (10): 
@@ -407,10 +407,10 @@ GENERADORES_132_DF.to_csv(ruta + r"\datos_generadores132_zona_Viesgo.csv",  deci
             
             
 #############################################################################
-## Recorrer las líneas de 132 kV de la zona Viesgo y guardar los resultados en
+## Recorrer las lÃ­neas de 132 kV de la zona Viesgo y guardar los resultados en
 ## las tablas SQL
 #############################################################################
- #Definición de la conexión con la DB
+ #DefiniciÃ³n de la conexiÃ³n con la DB
 conn = pyodbc.connect('Driver={SQL Server};'
                       'Server=193.144.190.81;'
                       'Database=Simulaciones_2020;'
@@ -423,7 +423,7 @@ cursor = conn.cursor()
 #for lineas in df_lineas132_viesgo.itertuples():
 for idx, lineas in df_lineas132_viesgo.iterrows():
 #    print(lineas)
-    #No entiendo porque con itertuples lineas[0] es un índice.
+    #No entiendo porque con itertuples lineas[0] es un Ã­ndice.
 #    print(int(lineas['Linea ID']))
 #    print(type(lineas[0]))
 #    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas[1]),int(lineas[4]), str(lineas[7]), 'AMPS')
@@ -449,7 +449,7 @@ for idx, lineas in df_lineas132_viesgo.iterrows():
 
 
 #############################################################################
-## Recorrer las líneas de 132 kV de la zona Viesgo y obtener la tensión en todos
+## Recorrer las lÃ­neas de 132 kV de la zona Viesgo y obtener la tensiÃ³n en todos
 ## los buses
 #############################################################################
 TENSION_BUSES_132 = []
@@ -463,7 +463,7 @@ for idx, lineas in df_lineas132_viesgo.iterrows():
 #TENSION_BUSES_132 = list(set(TENSION_BUSES_132))
 temp = []
 [temp.append(x) for x in TENSION_BUSES_132 if x not in temp]
-#Se ordena por número de bus
+#Se ordena por nÃºmero de bus
 TENSION_BUSES_132 = sorted(temp, key=lambda num_bus : num_bus[0])
 
 
@@ -492,7 +492,7 @@ del cursor
 ##guardar resultados en el SQL.
 #############################################################################
 
-#Extracción de datos del SQL
+#ExtracciÃ³n de datos del SQL
 cursor = conn.cursor()
 nombre_tabla_info = "INPUT_ESCENARIOS_GENERADORES"
 num_escenario = [1, 2, 3] #"2"
@@ -514,7 +514,7 @@ for id_esc in num_escenario:
     #Se obtienen los valores de corriente y potencias y se guardan en el SQL
     for idx, lineas in df_lineas132_viesgo.iterrows():
     #    print(lineas)
-        #No entiendo porque con itertuples lineas[0] es un índice.
+        #No entiendo porque con itertuples lineas[0] es un Ã­ndice.
     #    print(int(lineas['Linea ID']))
     #    print(type(lineas[0]))
     #    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas[1]),int(lineas[4]), str(lineas[7]), 'AMPS')
@@ -565,13 +565,13 @@ del cursor
 
 
 
-#print('Info inicial. Tensión bus inicio y fin, corriente línea y potencia generador.')
+#print('Info inicial. TensiÃ³n bus inicio y fin, corriente lÃ­nea y potencia generador.')
 #print(psspy.busdat(109, 'KV'), 'ierr, kV inicio')
 #print(psspy.busdat(941, 'KV'), 'ierr, kV fin')
 #print(psspy.brnmsc(109, 941, '1', 'AMPS'), 'ierr, A linea')
 #print(psspy.macdat(109, '1', 'P'), 'ierr, MW')
 #
-#print('Info tras el cambio. Tensión bus inicio y fin, corriente línea y potencia generador.')
+#print('Info tras el cambio. TensiÃ³n bus inicio y fin, corriente lÃ­nea y potencia generador.')
 #print(psspy.busdat(109, 'KV'), 'ierr, kV inicio')
 #print(psspy.busdat(941, 'KV'), 'ierr, kV fin')
 #print(psspy.brnmsc(109, 941, '1', 'AMPS'), 'ierr, A linea')
