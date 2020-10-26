@@ -29,6 +29,7 @@ warnings.simplefilter("error")
 warnings.filterwarnings('ignore', category=PendingDeprecationWarning)
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
 import xlsxwriter
 import pyodbc 
 
@@ -384,19 +385,24 @@ lista_ids = ['1', '2', '3', '4', '5', '6', '7', 'A', 'B', 'C', 'D', 'E', 'PC', '
 i=0
 for nb in BUSESGEN_132:
     for id_gen in lista_ids:
-        ierr, rval = psspy.macdat(nb, id_gen, 'P')
-        if (ierr == 0 or ierr == 4):
-            GENERADORES_132.append([nb, psspy.notona(nb)[1], id_gen, ierr, rval])
+        ierr_P, rval_P = psspy.macdat(nb, id_gen, 'P')
+        ierr_PMAX, rval_PMAX = psspy.macdat(nb, id_gen, 'PMAX')
+        ierr_PMIN, rval_PMIN = psspy.macdat(nb, id_gen, 'PMIN')
+        ierr_Q, rval_Q = psspy.macdat(nb, id_gen, 'Q')
+        ierr_QMAX, rval_QMAX = psspy.macdat(nb, id_gen, 'QMAX')
+        ierr_QMIN, rval_QMIN = psspy.macdat(nb, id_gen, 'QMIN')
+        ierr_MBASE, rval_MBASE = psspy.macdat(nb, id_gen, 'MBASE')
+        bus_i_area_num = psspy.busint(nb, 'AREA')
+        if (ierr_P == 0 or ierr_P == 4):
+            GENERADORES_132.append([nb, psspy.notona(nb)[1], bus_i_area_num[1], id_gen, ierr_P, rval_P, rval_PMAX, rval_PMIN, rval_Q, rval_QMAX, rval_QMIN, rval_MBASE])
 #    print(i, nb, ierr, rval)
 #Columnas de la lista GENERADORES_132: 
 #['Bus_Number', 'BUS_NAME', 'ID_generator', 'ierr', 'Machine_loading_MW']
+#Se convierte la lista GENERADORES_132 a DataFrame para guardarlo como csv con columnas
+GENERADORES_132_DF = DataFrame(GENERADORES_132, columns=['Bus_Number', 'BUS_Name', 'Area_Num', 'ID_Generador', 'ierr_P', 'P_MW', 'PMAX_MW', 'PMIN_MW', 'Q_MVAR', 'QMAX_MVAR', 'QMIN_MVAR', 'MBASE_MVA'])
+GENERADORES_132_DF.to_csv(ruta + r"\datos_generadores132_zona_Viesgo.csv",  decimal=',', sep=';', encoding='latin9', index=False, header=True)
     
-    
-#ierrA, rvalA = psspy.macdat(29, 'A', 'P')
-#ierrB, rvalB = psspy.macdat(29, 'B', 'P')
-#ierrC, rvalC = psspy.macdat(29, 'C', 'P')
-#ierrA, ierrB, ierrC
-#rvalA, rvalB, rvalC
+
             
             
             
@@ -428,15 +434,17 @@ for idx, lineas in df_lineas132_viesgo.iterrows():
 #    print(ierr_P, rval_P )
 #    print(ierr_Q, rval_Q )
     
-    nombre_tabla = "OUTPUT_" + lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_') + "_" + lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_') + "_" + str(lineas['Linea ID'])
-    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, AMPS, P, Q) VALUES (-1, " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
+#    nombre_tabla = "OUTPUT_" + lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_') + "_" + lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_') + "_" + str(lineas['Linea ID'])
+#    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, AMPS, P, Q) VALUES (-1, " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
 #    print(instruccion_insert)
+    nombre_tabla = "OUTPUT_AMPS_P_Q_LAT_132"
+    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, To_Bus_Number, AMPS, P_MW, Q_MVAR) VALUES (-1, " + str(lineas['From Bus Number']) + ", " + str(lineas['To Bus Number']) + ", " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
+    
     cursor.execute(instruccion_insert)
     conn.commit()
     
     
-cursor.close()
-del cursor
+
 
 
 
@@ -457,6 +465,99 @@ temp = []
 [temp.append(x) for x in TENSION_BUSES_132 if x not in temp]
 #Se ordena por número de bus
 TENSION_BUSES_132 = sorted(temp, key=lambda num_bus : num_bus[0])
+
+
+#Se recorre la lista de buses para guardar las tensiones en el SQL
+for nb in TENSION_BUSES_132:
+#    print(nb[0])
+    nombre_tabla = "OUTPUT_KV_BUSES_132"
+    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, KV) VALUES (-1, " + str(nb[0]) + ", " + str(nb[3]) + ");"
+#    print(instruccion_insert)
+    cursor.execute(instruccion_insert)
+    conn.commit()
+
+
+cursor.close()
+del cursor
+
+
+
+
+
+
+
+
+#############################################################################
+## Leer valores de potencia del SQL, cambiarlos en los generadores, simular y 
+##guardar resultados en el SQL.
+#############################################################################
+
+#Extracción de datos del SQL
+cursor = conn.cursor()
+nombre_tabla_info = "INPUT_ESCENARIOS_GENERADORES"
+num_escenario = [1, 2, 3] #"2"
+#id_esc = 3
+for id_esc in num_escenario:
+    SQL_Query = pd.read_sql_query('''SELECT ALL [ID_Escenario],[Bus_Number],[Bus_Name],[ID_Generador],[P_MW_simulacion] FROM [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] where ID_Escenario = ''' + str(id_esc), conn)
+    df_escenario = pd.DataFrame(SQL_Query, columns=['ID_Escenario','Bus_Number','BUS_Name','ID_Generador','P_MW_simulacion'])
+    
+    #Cambio de potencia en los generadores
+    for idx, generadores in df_escenario.iterrows():
+        print(str(generadores['Bus_Number']), str(generadores['ID_Generador']),str(generadores['P_MW_simulacion']))
+        psspy.machine_data_2(generadores['Bus_Number'],str(generadores['ID_Generador']),[psspy.getdefaultint()],[generadores['P_MW_simulacion']])
+    
+    #Volvemos a simular
+    psspy.fdns([0,0,0,1,1,1,99,0])
+    U=psspy.solv()
+    
+    
+    #Se obtienen los valores de corriente y potencias y se guardan en el SQL
+    for idx, lineas in df_lineas132_viesgo.iterrows():
+    #    print(lineas)
+        #No entiendo porque con itertuples lineas[0] es un índice.
+    #    print(int(lineas['Linea ID']))
+    #    print(type(lineas[0]))
+    #    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas[1]),int(lineas[4]), str(lineas[7]), 'AMPS')
+        ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'AMPS')
+        ierr_P, rval_P = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'P')
+        ierr_Q, rval_Q = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'Q')
+    #    print(ierr_AMPS,rval_AMPS)
+    #    print(ierr_P, rval_P )
+    #    print(ierr_Q, rval_Q )
+        
+    #    nombre_tabla = "OUTPUT_" + lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_') + "_" + lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_') + "_" + str(lineas['Linea ID'])
+    #    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, AMPS, P, Q) VALUES (-1, " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
+    #    print(instruccion_insert)
+        nombre_tabla = "OUTPUT_AMPS_P_Q_LAT_132"
+        instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, To_Bus_Number, AMPS, P_MW, Q_MVAR) VALUES (" + str(id_esc) + ", " + str(lineas['From Bus Number']) + ", " + str(lineas['To Bus Number']) + ", " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
+        
+        cursor.execute(instruccion_insert)
+        conn.commit()
+    
+    #Se recorre la lista de buses para guardar las tensiones en el SQL
+    for nb in TENSION_BUSES_132:
+    #    print(nb[0])
+        nombre_tabla = "OUTPUT_KV_BUSES_132"
+        instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, KV) VALUES (" + str(id_esc) + ", " + str(nb[0]) + ", " + str(nb[3]) + ");"
+    #    print(instruccion_insert)
+        cursor.execute(instruccion_insert)
+        conn.commit()
+    
+
+cursor.close()
+del cursor
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
