@@ -32,6 +32,7 @@ import pandas as pd
 from pandas import DataFrame
 import xlsxwriter
 import pyodbc 
+import math
 
 
 ##############################################################################
@@ -65,7 +66,10 @@ psspy.case(CASOsav)
 #psspy.fnsl([0,0,0,1,1,1,99,0])
 #psspy.save(CASOsav)
 
-
+#Volvemos a simular
+psspy.fdns([0,0,0,1,1,1,99,0])
+U=psspy.solv()
+        
 #bus_i = 798
 #bus_f = 734
 #ierr, line_rx = psspy.brndt2( bus_i, bus_f, '1', 'RXZ')
@@ -101,25 +105,89 @@ print '\n\n---------- TODOS LOS BUSES DE 132 kV ----------\n'
 print BUSLIST
 print '\n\n-----------------------------------------------\n'
 
+
+##############################################################################
+## Instrucciones para recorrer todos los buses y almacenar aquellos que
+## verifiquen el criterio de tension base = 55 kV
+##############################################################################
+#BUSLIST_55=[]
+#BUSNAME_55=[]
+##Nbus = len( busnumbers[0])
+#for nb in busnumbers[0]:
+#    bus_index = busnumbers[0].index(nb)
+#    voltage = busvoltages[0][bus_index]
+#    name = busnames[0][bus_index]
+#    if  voltage == 55.0:
+#        print( busnames[0][bus_index])
+#        BUSLIST_55.append(nb)
+#        BUSNAME_55.append(psspy.notona(nb)[1])
+#    nb=nb+1
+
+
+
 ##############################################################################
 ## Instrucciones para obtener las líneas conectadas a los buses de 132 kV
+## MODIFICADO. Los if originales no incluían las líneas dobles ACTIVAS.
+## No se almacenan las localizadas como no conectadas.
 ##############################################################################
 p=0
 RAMAS=[]
+RAMAS_DESCONECT = []
+lista_ids = ['1','2','3','4','6','7','99','R'] #Lista de IDs de líneas
 BUSZONA=BUSLIST
 while p<len(BUSZONA):
     j=p
     while j<len(BUSZONA):
-        if 0 == psspy.brnstt(BUSZONA[p],BUSZONA[j],'1')[0]:
-            RAMAS.append([BUSZONA[p],BUSZONA[j],'1'])
-        elif 0 == psspy.brnstt(BUSZONA[p],BUSZONA[j],'2')[0]:
-            RAMAS.append([BUSZONA[p],BUSZONA[j],'2'])
+        for id_linea in lista_ids:
+            #Se localizan únicamente las líneas que están en servicio
+            if 1 == psspy.brnstt(BUSZONA[p],BUSZONA[j],id_linea)[1]: #[ierr,ival]. ierr=0(no error),1(no bus),2(no branck). ival=0(out of service), 1(in-service)
+                RAMAS.append([BUSZONA[p],BUSZONA[j],id_linea])
+            if 0 == psspy.brnstt(BUSZONA[p],BUSZONA[j],id_linea)[1]:
+                RAMAS_DESCONECT.append([BUSZONA[p],psspy.notona(BUSZONA[p])[1],BUSZONA[j],psspy.notona(BUSZONA[j])[1],id_linea])
+#        if 0 == psspy.brnstt(BUSZONA[p],BUSZONA[j],'1')[0]:
+#            RAMAS.append([BUSZONA[p],BUSZONA[j],'1'])
+#        elif 0 == psspy.brnstt(BUSZONA[p],BUSZONA[j],'2')[0]:
+#            RAMAS.append([BUSZONA[p],BUSZONA[j],'2'])
         j=j+1
     p=p+1
+    
+# Determinar las líneas que están activas o desactivadas: ierr, ival=psspy.brnstt(107,931,'2'), ival=0, desactivada, ival=1 activada
 print '\n\n---------- LINEAS DE 132 kV  ----------\n'
 print RAMAS
 print '\n\n---------------------------------------\n'
 
+
+
+
+
+##############################################################################
+## Instrucciones para obtener las líneas conectadas a los buses de 55 kV
+## MODIFICADO. Los if originales no incluían las líneas dobles ACTIVAS.
+## No se almacenan las localizadas como no conectadas.
+##############################################################################
+#p=0
+#RAMAS_55=[]
+#RAMAS_DESCONECT_55 = []
+#lista_ids = ['1','2','3','4','6','7','99','R'] #Lista de IDs de líneas
+#BUSZONA_55=BUSLIST_55
+#while p<len(BUSZONA_55):
+#    j=p
+#    while j<len(BUSZONA_55):
+#        for id_linea in lista_ids:
+#            #Se localizan únicamente las líneas que están en servicio
+#            if 1 == psspy.brnstt(BUSZONA_55[p],BUSZONA_55[j],id_linea)[1]: #[ierr,ival]. ierr=0(no error),1(no bus),2(no branck). ival=0(out of service), 1(in-service)
+#                RAMAS_55.append([BUSZONA_55[p],BUSZONA_55[j],id_linea])
+#            if 0 == psspy.brnstt(BUSZONA_55[p],BUSZONA_55[j],id_linea)[1]:
+#                RAMAS_DESCONECT_55.append([BUSZONA_55[p],psspy.notona(BUSZONA_55[p])[1],BUSZONA_55[j],psspy.notona(BUSZONA_55[j])[1],id_linea])
+##        if 0 == psspy.brnstt(BUSZONA[p],BUSZONA[j],'1')[0]:
+##            RAMAS.append([BUSZONA[p],BUSZONA[j],'1'])
+##        elif 0 == psspy.brnstt(BUSZONA[p],BUSZONA[j],'2')[0]:
+##            RAMAS.append([BUSZONA[p],BUSZONA[j],'2'])
+#        j=j+1
+#    p=p+1
+    
+    
+    
 
 
 ##############################################################################
@@ -162,6 +230,10 @@ col += 1
 
 worksheet.write(row, col, 'Length (km)')
 col += 1
+
+worksheet.write(row, col, 'Rate1 (MVA)')
+col += 1
+
 worksheet.write(row, col, 'R(pu)')
 col += 1
 worksheet.write(row, col, 'X(pu)')
@@ -197,6 +269,9 @@ for linea in RAMAS:
     XZ_line = 0
     line_length = 0.0
     ierr, line_length = psspy.brndat( bus_i, bus_f, ckt, 'LENGTH')
+    
+    ierr, rate_1 = psspy.brndat( bus_i, bus_f, ckt, 'RATEA')
+    
     ierr, line_B = psspy.brndat( bus_i, bus_f, ckt, 'CHARG')
     ierr, line_rx = psspy.brndt2( bus_i, bus_f, ckt, 'RX')
     if ierr == 0:
@@ -228,6 +303,10 @@ for linea in RAMAS:
     
     worksheet.write(row, col, round(line_length,2))
     col += 1
+    
+    worksheet.write(row, col, rate_1)
+    col += 1
+    
     worksheet.write(row, col, R_line)
     col += 1
     worksheet.write(row, col, X_line)
@@ -360,7 +439,8 @@ for nb in busnumbers[0]:
     ierr, cmpval = psspy.gendat(nb)
     
     #if (ierr == 0 and voltage == 132.0):# or ierr == 4):
-    if (ierr == 0 or ierr == 4) and voltage == 132.0 and bus_i_area_num[1] == 10:
+    #Es necesario incluir ierr=3 porque sino no encuentra todos los buses con generación
+    if (ierr == 0 or ierr == 4 or ierr == 3) and voltage == 132.0 and bus_i_area_num[1] == 10:
 #        print(bus_i_area_num[1],nb,  bus_index, voltage)
 #         print( busnames[0][bus_index])
         BUSESGEN_132.append(nb)
@@ -393,159 +473,173 @@ for nb in BUSESGEN_132:
         ierr_QMIN, rval_QMIN = psspy.macdat(nb, id_gen, 'QMIN')
         ierr_MBASE, rval_MBASE = psspy.macdat(nb, id_gen, 'MBASE')
         bus_i_area_num = psspy.busint(nb, 'AREA')
-        if (ierr_P == 0 or ierr_P == 4):
+        if (ierr_P == 0 or ierr_P == 4 or ierr_P == 3):
             GENERADORES_132.append([nb, psspy.notona(nb)[1], bus_i_area_num[1], id_gen, ierr_P, rval_P, rval_PMAX, rval_PMIN, rval_Q, rval_QMAX, rval_QMIN, rval_MBASE])
 #    print(i, nb, ierr, rval)
 #Columnas de la lista GENERADORES_132: 
 #['Bus_Number', 'BUS_NAME', 'ID_generator', 'ierr', 'Machine_loading_MW']
 #Se convierte la lista GENERADORES_132 a DataFrame para guardarlo como csv con columnas
-GENERADORES_132_DF = DataFrame(GENERADORES_132, columns=['Bus_Number', 'BUS_Name', 'Area_Num', 'ID_Generador', 'ierr_P', 'P_MW', 'PMAX_MW', 'PMIN_MW', 'Q_MVAR', 'QMAX_MVAR', 'QMIN_MVAR', 'MBASE_MVA'])
+GENERADORES_132_DF = DataFrame(GENERADORES_132, columns=['Bus_Number', 'Bus_Name', 'Area_Num', 'ID_Generador', 'ierr_P', 'P_MW', 'PMAX_MW', 'PMIN_MW', 'Q_MVAR', 'QMAX_MVAR', 'QMIN_MVAR', 'MBASE_MVA'])
 GENERADORES_132_DF.to_csv(ruta + r"\datos_generadores132_zona_Viesgo.csv",  decimal=',', sep=';', encoding='latin9', index=False, header=True)
     
 
             
             
-            
-#############################################################################
-## Recorrer las líneas de 132 kV de la zona Viesgo y guardar los resultados en
-## las tablas SQL
-#############################################################################
- #Definición de la conexión con la DB
-conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=193.144.190.81;'
-                      'Database=Simulaciones_2020;'
-                      'UID=user;'
-                      'PWD=1234')
-                      #'Trusted_Connection=yes;')
-
-cursor = conn.cursor()
-
-#for lineas in df_lineas132_viesgo.itertuples():
-for idx, lineas in df_lineas132_viesgo.iterrows():
-#    print(lineas)
-    #No entiendo porque con itertuples lineas[0] es un índice.
-#    print(int(lineas['Linea ID']))
-#    print(type(lineas[0]))
-#    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas[1]),int(lineas[4]), str(lineas[7]), 'AMPS')
-    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'AMPS')
-    ierr_P, rval_P = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'P')
-    ierr_Q, rval_Q = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'Q')
-#    print(ierr_AMPS,rval_AMPS)
-#    print(ierr_P, rval_P )
-#    print(ierr_Q, rval_Q )
-    
-#    nombre_tabla = "OUTPUT_" + lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_') + "_" + lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_') + "_" + str(lineas['Linea ID'])
-#    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, AMPS, P, Q) VALUES (-1, " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
-#    print(instruccion_insert)
-    nombre_tabla = "OUTPUT_AMPS_P_Q_LAT_132"
-    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, To_Bus_Number, AMPS, P_MW, Q_MVAR) VALUES (-1, " + str(lineas['From Bus Number']) + ", " + str(lineas['To Bus Number']) + ", " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
-    
-    cursor.execute(instruccion_insert)
-    conn.commit()
-    
-    
-
-
-
-
-#############################################################################
-## Recorrer las líneas de 132 kV de la zona Viesgo y obtener la tensión en todos
-## los buses
-#############################################################################
-TENSION_BUSES_132 = []
-for idx, lineas in df_lineas132_viesgo.iterrows():
-    ierr_orig, rval_orig = psspy.busdat(lineas['From Bus Number'], 'KV')
-    ierr_dest, rval_dest = psspy.busdat(lineas['To Bus Number'], 'KV')
-    TENSION_BUSES_132.append([int(lineas['From Bus Number']), str(lineas['Subestacion 1']), ierr_orig, rval_orig])
-    TENSION_BUSES_132.append([int(lineas['To Bus Number']), str(lineas['Subestacion 2']), ierr_dest, rval_dest])
-#Se eliminan los valores duplicados
-#TENSION_BUSES_132 = list(dict.fromkeys(TENSION_BUSES_132))
-#TENSION_BUSES_132 = list(set(TENSION_BUSES_132))
-temp = []
-[temp.append(x) for x in TENSION_BUSES_132 if x not in temp]
-#Se ordena por número de bus
-TENSION_BUSES_132 = sorted(temp, key=lambda num_bus : num_bus[0])
-
-
-#Se recorre la lista de buses para guardar las tensiones en el SQL
-for nb in TENSION_BUSES_132:
-#    print(nb[0])
-    nombre_tabla = "OUTPUT_KV_BUSES_132"
-    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, KV) VALUES (-1, " + str(nb[0]) + ", " + str(nb[3]) + ");"
-#    print(instruccion_insert)
-    cursor.execute(instruccion_insert)
-    conn.commit()
-
-
-cursor.close()
-del cursor
-
-
-
-
-
-
-
-
-#############################################################################
-## Leer valores de potencia del SQL, cambiarlos en los generadores, simular y 
-##guardar resultados en el SQL.
-#############################################################################
-
-#Extracción de datos del SQL
-cursor = conn.cursor()
-nombre_tabla_info = "INPUT_ESCENARIOS_GENERADORES"
-num_escenario = [1, 2, 3] #"2"
-#id_esc = 3
-for id_esc in num_escenario:
-    SQL_Query = pd.read_sql_query('''SELECT ALL [ID_Escenario],[Bus_Number],[Bus_Name],[ID_Generador],[P_MW_simulacion] FROM [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] where ID_Escenario = ''' + str(id_esc), conn)
-    df_escenario = pd.DataFrame(SQL_Query, columns=['ID_Escenario','Bus_Number','BUS_Name','ID_Generador','P_MW_simulacion'])
-    
-    #Cambio de potencia en los generadores
-    for idx, generadores in df_escenario.iterrows():
-        print(str(generadores['Bus_Number']), str(generadores['ID_Generador']),str(generadores['P_MW_simulacion']))
-        psspy.machine_data_2(generadores['Bus_Number'],str(generadores['ID_Generador']),[psspy.getdefaultint()],[generadores['P_MW_simulacion']])
-    
-    #Volvemos a simular
-    psspy.fdns([0,0,0,1,1,1,99,0])
-    U=psspy.solv()
-    
-    
-    #Se obtienen los valores de corriente y potencias y se guardan en el SQL
-    for idx, lineas in df_lineas132_viesgo.iterrows():
-    #    print(lineas)
-        #No entiendo porque con itertuples lineas[0] es un índice.
-    #    print(int(lineas['Linea ID']))
-    #    print(type(lineas[0]))
-    #    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas[1]),int(lineas[4]), str(lineas[7]), 'AMPS')
-        ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'AMPS')
-        ierr_P, rval_P = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'P')
-        ierr_Q, rval_Q = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'Q')
-    #    print(ierr_AMPS,rval_AMPS)
-    #    print(ierr_P, rval_P )
-    #    print(ierr_Q, rval_Q )
-        
-    #    nombre_tabla = "OUTPUT_" + lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_') + "_" + lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_') + "_" + str(lineas['Linea ID'])
-    #    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, AMPS, P, Q) VALUES (-1, " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
-    #    print(instruccion_insert)
-        nombre_tabla = "OUTPUT_AMPS_P_Q_LAT_132"
-        instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, To_Bus_Number, AMPS, P_MW, Q_MVAR) VALUES (" + str(id_esc) + ", " + str(lineas['From Bus Number']) + ", " + str(lineas['To Bus Number']) + ", " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
-        
-        cursor.execute(instruccion_insert)
-        conn.commit()
-    
-    #Se recorre la lista de buses para guardar las tensiones en el SQL
-    for nb in TENSION_BUSES_132:
-    #    print(nb[0])
-        nombre_tabla = "OUTPUT_KV_BUSES_132"
-        instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, KV) VALUES (" + str(id_esc) + ", " + str(nb[0]) + ", " + str(nb[3]) + ");"
-    #    print(instruccion_insert)
-        cursor.execute(instruccion_insert)
-        conn.commit()
-    
-
-cursor.close()
-del cursor
+#            
+##############################################################################
+### Recorrer las líneas de 132 kV de la zona Viesgo y guardar los resultados en
+### las tablas SQL
+##############################################################################
+# #Definición de la conexión con la DB
+#conn = pyodbc.connect('Driver={SQL Server};'
+#                      'Server=193.144.190.81;'
+#                      'Database=Simulaciones_2020;'
+#                      'UID=user;'
+#                      'PWD=1234')
+#                      #'Trusted_Connection=yes;')
+#
+#cursor = conn.cursor()
+#
+##for lineas in df_lineas132_viesgo.itertuples():
+#for idx, lineas in df_lineas132_viesgo.iterrows():
+##    print(lineas)
+#    #No entiendo porque con itertuples lineas[0] es un índice.
+##    print(int(lineas['Linea ID']))
+##    print(type(lineas[0]))
+##    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas[1]),int(lineas[4]), str(lineas[7]), 'AMPS')
+#    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'AMPS')
+#    ierr_P, rval_P = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'P')
+#    ierr_Q, rval_Q = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'Q')
+#    #ierr_MVA, rval_MVA = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'PCTCPA')
+#    rate_MVA_Perc = 0
+#    if int(lineas['Rate1 (MVA)']) is not 0:
+#        rate_MVA_Perc = ((math.sqrt(3)*132000*rval_AMPS)/1000000)/int(lineas['Rate1 (MVA)'])*100
+##    print(ierr_AMPS,rval_AMPS)
+##    print(ierr_P, rval_P )
+##    print(ierr_Q, rval_Q )
+#    
+##    nombre_tabla = "OUTPUT_" + lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_') + "_" + lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_') + "_" + str(lineas['Linea ID'])
+##    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, AMPS, P, Q) VALUES (-1, " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
+##    print(instruccion_insert)
+#    nombre_tabla = "OUTPUT_AMPS_P_Q_RATE_LAT_132"
+#    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, Subestacion_1, To_Bus_Number, Subestacion_2, Linea_ID, AMPS, P_MW, Q_MVAR, RATE_PERC) VALUES (-1, " + str(lineas['From Bus Number']) + ", '" + str(lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(lineas['To Bus Number']) + ", '" + str(lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_')) + "', '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"#str(rval_AMPS*100/lineas['Rate1 (MVA)']) + ");"
+#    
+#    cursor.execute(instruccion_insert)
+#    conn.commit()
+#    
+#    
+#
+#
+#
+#
+##############################################################################
+### Recorrer las líneas de 132 kV de la zona Viesgo y obtener la tensión en todos
+### los buses
+##############################################################################
+#TENSION_BUSES_132 = []
+#for idx, lineas in df_lineas132_viesgo.iterrows():
+#    ierr_orig, rval_orig = psspy.busdat(lineas['From Bus Number'], 'KV')
+#    ierr_dest, rval_dest = psspy.busdat(lineas['To Bus Number'], 'KV')
+#    TENSION_BUSES_132.append([int(lineas['From Bus Number']), str(lineas['Subestacion 1']), ierr_orig, rval_orig])
+#    TENSION_BUSES_132.append([int(lineas['To Bus Number']), str(lineas['Subestacion 2']), ierr_dest, rval_dest])
+##Se eliminan los valores duplicados
+##TENSION_BUSES_132 = list(dict.fromkeys(TENSION_BUSES_132))
+##TENSION_BUSES_132 = list(set(TENSION_BUSES_132))
+#temp = []
+#[temp.append(x) for x in TENSION_BUSES_132 if x not in temp]
+##Se ordena por número de bus
+#TENSION_BUSES_132 = sorted(temp, key=lambda num_bus : num_bus[0])
+#
+#
+##Se recorre la lista de buses para guardar las tensiones en el SQL
+#for nb in TENSION_BUSES_132:
+##    print(nb[0])
+#    nombre_tabla = "OUTPUT_KV_BUSES_132"
+#    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, Subestacion, KV) VALUES (-1, " + str(nb[0]) + ", '" + str(nb[1].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(nb[3]) + ");"
+##    print(instruccion_insert)
+#    cursor.execute(instruccion_insert)
+#    conn.commit()
+#
+#
+#cursor.close()
+#del cursor
+#
+#
+#
+#
+#
+#
+#
+#
+##############################################################################
+### Leer valores de potencia del SQL, cambiarlos en los generadores, simular y 
+###guardar resultados en el SQL.
+##############################################################################
+#
+##Extracción de datos del SQL
+#cursor = conn.cursor()
+#nombre_tabla_info = "INPUT_ESCENARIOS_GENERADORES"
+#num_escenarios = 3 #[1, 2, 3]
+#for id_esc in range(0, num_escenarios):#num_escenarios:
+#    SQL_Query = pd.read_sql_query('''SELECT ALL [ID_Escenario],[Bus_Number],[Bus_Name],[ID_Generador],[Porc_simulacion],[P_MW_simulacion] FROM [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] where ID_Escenario = ''' + str(id_esc), conn)
+#    df_escenario = pd.DataFrame(SQL_Query, columns=['ID_Escenario','Bus_Number','BUS_Name','ID_Generador','P_MW_simulacion'])
+#    
+#    #Se comprueba si no hay escenario para es id_escenario y la tabla está vacía
+#    if not df_escenario.empty:
+#        #Cambio de potencia en los generadores
+#        for idx, generadores in df_escenario.iterrows():
+#            print(str(generadores['Bus_Number']), str(generadores['ID_Generador']),str(generadores['P_MW_simulacion']))
+##            filtro = GENERADORES_132_DF.loc[(GENERADORES_132_DF['Bus_Number'] == generadores['Bus_Number']) & (GENERADORES_132_DF['ID_Generador'] == str(generadores['ID_Generador']))]
+##            pot_nueva = filtro['PMAX_MW'][0] * generadores['P_MW_simulacion']
+#            psspy.machine_data_2(generadores['Bus_Number'],str(generadores['ID_Generador']),[psspy.getdefaultint()],[generadores['P_MW_simulacion']])
+#        
+#        #Volvemos a simular
+#        psspy.fdns([0,0,0,1,1,1,99,0])
+#        U=psspy.solv()
+#        
+#        
+#        #Se obtienen los valores de corriente y potencias y se guardan en el SQL
+#        for idx, lineas in df_lineas132_viesgo.iterrows():
+#        #    print(lineas)
+#            #No entiendo porque con itertuples lineas[0] es un índice.
+#        #    print(int(lineas['Linea ID']))
+#        #    print(type(lineas[0]))
+#        #    ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas[1]),int(lineas[4]), str(lineas[7]), 'AMPS')
+#            ierr_AMPS, rval_AMPS = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'AMPS')
+#            ierr_P, rval_P = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'P')
+#            ierr_Q, rval_Q = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'Q')
+#            #ierr_MVA, rval_MVA = psspy.brnmsc(int(lineas['From Bus Number']),int(lineas['To Bus Number']), str(lineas['Linea ID']), 'PCTCPA')
+#            #rval_MVA = ((math.sqrt(3)*132000*rval_AMPS)/1000000)/int(lineas['Rate1 (MVA)'])*100
+#            rate_MVA_Perc = 0
+#            if int(lineas['Rate1 (MVA)']) is not 0:
+#                rate_MVA_Perc = ((math.sqrt(3)*132000*rval_AMPS)/1000000)/int(lineas['Rate1 (MVA)'])*100
+#        #    print(ierr_AMPS,rval_AMPS)
+#        #    print(ierr_P, rval_P )
+#        #    print(ierr_Q, rval_Q )
+#            
+#        #    nombre_tabla = "OUTPUT_" + lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_') + "_" + lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_') + "_" + str(lineas['Linea ID'])
+#        #    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, AMPS, P, Q) VALUES (-1, " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
+#        #    print(instruccion_insert)
+#            nombre_tabla = "OUTPUT_AMPS_P_Q_RATE_LAT_132"
+#    #        instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, To_Bus_Number, Linea_ID, AMPS, P_MW, Q_MVAR, RATE_PERC) VALUES (" + str(id_esc) + ", " + str(lineas['From Bus Number']) + ", " + str(lineas['To Bus Number']) + ", '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"
+#            instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, Subestacion_1, To_Bus_Number, Subestacion_2, Linea_ID, AMPS, P_MW, Q_MVAR, RATE_PERC) VALUES (" + str(id_esc) + ", " + str(lineas['From Bus Number']) + ", '" + str(lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(lineas['To Bus Number']) + ", '" + str(lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_')) + "', '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"#str(rval_AMPS*100/lineas['Rate1 (MVA)']) + ");"
+#            
+#            cursor.execute(instruccion_insert)
+#            conn.commit()
+#        
+#        #Se recorre la lista de buses para guardar las tensiones en el SQL
+#        for nb in TENSION_BUSES_132:
+#        #    print(nb[0])
+#            nombre_tabla = "OUTPUT_KV_BUSES_132"
+#    #        instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, KV) VALUES (" + str(id_esc) + ", " + str(nb[0]) + ", " + str(nb[3]) + ");"
+#            instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, Subestacion, KV) VALUES (" + str(id_esc) + ", " + str(nb[0]) + ", '" + str(nb[1].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(nb[3]) + ");"
+#        #    print(instruccion_insert)
+#            cursor.execute(instruccion_insert)
+#            conn.commit()
+#        
+#
+#cursor.close()
+#del cursor
 
 
 
