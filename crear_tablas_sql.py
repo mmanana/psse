@@ -9,29 +9,18 @@ Created on Fri Oct 23 11:26:55 2020
 ## Crear tablas SQL Simulaciones PSS octubre 2020                  ##
 ##############################################################################
 
+import time
+print (time.strftime("%d/%m/%y"), time.strftime("%H:%M:%S"))
+#Tiempo que tarda en generar 1000 escenarios: 4 min
 
 #Definición de la conexión con la DB
 import pyodbc 
 import pandas as pd
 from datetime import datetime,timedelta
 import random
-
-
-conn = pyodbc.connect('Driver={SQL Server};'
-                      'Server=193.144.190.81;'
-                      'Database=Simulaciones_2020;'
-                      'UID=user;'
-                      'PWD=1234')
-                      #'Trusted_Connection=yes;')
                       
-#conn = pyodbc.connect('Driver={SQL Server};'
-#                      'Server=193.144.195.16;'
-#                      'Database=Simulaciones_2020;'
-#                      'UID=Cuentapersonas;'
-#                      'PWD=Cuentapersonas_pgob16')
-#                      #'Trusted_Connection=yes;')
 
-cursor = conn.cursor()
+
 
 
 #ruta= r"F:\GTEA\PSS-Moises\PSSE_Viesgo"
@@ -39,7 +28,27 @@ ruta= r"C:\David\PSSE_Viesgo"
 #CASOraw= ruta + r"RDF_Caso_Base_2019_Pcc_wind10_2.raw"
 archivo_lineas = ruta + r"\datos_lineas132_zona_Viesgo.csv"
 archivo_generadores = ruta + r"\datos_generadores132_zona_Viesgo.csv"
-
+archivo_config = ruta + r"\Config.txt"
+f = open (archivo_config,'r')
+ip_server = f.readline().splitlines()[0]
+db_server = f.readline().splitlines()[0]
+usr_server = f.readline().splitlines()[0]
+pwd_server = f.readline().splitlines()[0]
+f.close()
+#while(True):
+#    linea = f.readline()
+#    print(linea)
+#    if not linea:
+#        break
+#f.close()
+conn = pyodbc.connect('Driver={SQL Server};'
+                      'Server=' + ip_server + ';'
+                      'Database=' + db_server + ';'
+                      'UID=' + usr_server + ';'
+                      'PWD=' + pwd_server)
+                      #'Trusted_Connection=yes;')
+                      
+cursor = conn.cursor()
 
 
 ##############################################################################
@@ -53,7 +62,7 @@ df_generadores132_viesgo = pd.read_csv(archivo_generadores, encoding='Latin9', h
 nombre_tabla_info = "INPUT_GENERADORES_132_Viesgo_INFO"
 #instruccion_create = '''CREATE TABLE ''' + nombre_tabla_info + ''' ('''
 #for i in range(0,len(df_generadores132_viesgo.columns)):
-instruccion_create = '''CREATE TABLE [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] (Bus_Number INT, Bus_Name TEXT, Area_Num INT, ID_Generador TEXT, ierr_P INT, P_MW FLOAT, PMAX_MW FLOAT, PMIN_MW FLOAT, Q_MVAR FLOAT, QMAX_MVAR FLOAT, QMIN_MVAR FLOAT, MBASE_MVA FLOAT);'''
+instruccion_create = '''CREATE TABLE [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] (Bus_Number INT, Bus_Name VARCHAR(25), Area_Num INT, ID_Generador VARCHAR(5), ierr_P INT, P_MW FLOAT, PMAX_MW FLOAT, PMIN_MW FLOAT, Q_MVAR FLOAT, QMAX_MVAR FLOAT, QMIN_MVAR FLOAT, MBASE_MVA FLOAT);'''
 
 cursor.execute(instruccion_create)
 
@@ -71,7 +80,7 @@ for idx,generadores in df_generadores132_viesgo.iterrows():
 ##############################################################################   
     
 nombre_tabla = "INPUT_ESCENARIOS_GENERADORES"
-instruccion_create = '''CREATE TABLE [Simulaciones_2020].[dbo].[''' + nombre_tabla + '''] (ID_Escenario INT, Bus_Number INT, Bus_Name TEXT, ID_Generador TEXT, Porc_simulacion INT, P_MW_simulacion FLOAT);'''
+instruccion_create = '''CREATE TABLE [Simulaciones_2020].[dbo].[''' + nombre_tabla + '''] (ID_Escenario INT, Bus_Number INT, Bus_Name VARCHAR(25), ID_Generador VARCHAR(5), Porc_simulacion INT, P_MW_simulacion FLOAT);'''
 cursor.execute(instruccion_create)
 conn.commit()
 #print(instruccion_create)
@@ -111,8 +120,9 @@ conn.commit()
 # el porcentage de generación.
 cursor = conn.cursor()
 nombre_tabla = "INPUT_ESCENARIOS_GENERADORES"
-num_escenarios = 3
-for id_esc in range(0,num_escenarios):
+num_escenarios = 10000
+#for id_esc in range(0,num_escenarios):
+for id_esc in range(1000, 1000 + num_escenarios):
     for idx, generadores in df_generadores132_viesgo.iterrows():
 #    for generadores in df_generadores132_viesgo.itertuples():
         #Se calcula el cambio de potencia unicamente para los generadores PC
@@ -121,7 +131,7 @@ for id_esc in range(0,num_escenarios):
             pot_gen_esc = float(generadores['PMAX_MW'].replace(',','.'))*factor_escalado/100
 #            print(factor_escalado, generadores['PMAX_MW'], pot_gen_esc)
             instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, Bus_Name, ID_Generador, Porc_simulacion, P_MW_simulacion) VALUES (" + str(id_esc) + ", " + str(generadores['Bus_Number']) + ", '" + str(generadores['Bus_Name'].strip(' ').replace(' ','_').replace('.','_')) + "', '" + str(generadores['ID_Generador']) + "', " + str(factor_escalado) + ", " + str(pot_gen_esc).replace(',','.') + ");"
-#            print(instruccion_insert)
+            print(instruccion_insert)
             cursor.execute(instruccion_insert)
             conn.commit()
 #cursor.close()
@@ -139,7 +149,7 @@ df_lineas132_viesgo = pd.read_csv(archivo_lineas, encoding='Latin9', header=0, s
 
 ### Se crea una tabla general con la información de las líneas y se rellena después.
 nombre_tabla_info = "OUTPUT_LAT_132_Viesgo_INFO"
-instruccion_create = '''CREATE TABLE ''' + nombre_tabla_info + ''' (From_Bus_Number INT, Subestacion_1 TEXT, Area_Num_1 INT, To_Bus_Number INT, Subestacion_2 TEXT, Area_Num_2 INT, Linea_ID TEXT, Length_km FLOAT, RATE_1_MVA FLOAT);'''
+instruccion_create = '''CREATE TABLE ''' + nombre_tabla_info + ''' (From_Bus_Number INT, Subestacion_1 VARCHAR(25), Area_Num_1 INT, To_Bus_Number INT, Subestacion_2 VARCHAR(25), Area_Num_2 INT, Linea_ID VARCHAR(5), Length_km FLOAT, RATE_1_MVA FLOAT);'''
 #    print(instruccion_create)
 cursor.execute(instruccion_create)
 
@@ -159,20 +169,21 @@ print('Estas dos instrucciones CREATE TABLE es necesario ejecutarlas directament
 #cursor = conn.cursor()
 #Crear la tabla de resultados de corriente y potencias
 nombre_tabla_info = "OUTPUT_AMPS_P_Q_RATE_LAT_132"
-instruccion_create = '''CREATE TABLE [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] (ID_Escenario INT, From_Bus_Number INT, Subestacion_1 TEXT, To_Bus_Number INT, Subestacion_2 TEXT, Linea_ID TEXT, AMPS FLOAT, P_MW FLOAT, Q_MVAR FLOAT, RATE_PERC FLOAT);'''
+instruccion_create = '''CREATE TABLE [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] (ID_Escenario INT, From_Bus_Number INT, Subestacion_1 VARCHAR(25), To_Bus_Number INT, Subestacion_2 VARCHAR(25), Linea_ID VARCHAR(5), AMPS FLOAT, P_MW FLOAT, Q_MVAR FLOAT, Indice_Carga FLOAT);'''
 #cursor.execute(instruccion_create)
 print(instruccion_create)
 
 
 #Crear la tabla de resultados de tensión en los buses
 nombre_tabla_info = "OUTPUT_KV_BUSES_132"
-instruccion_create = '''CREATE TABLE [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] (ID_Escenario INT, Bus_Number INT, Subestacion TEXT, KV FLOAT);'''
+instruccion_create = '''CREATE TABLE [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] (ID_Escenario INT, Bus_Number INT, Subestacion VARCHAR(25), KV FLOAT);'''
 #cursor.execute(instruccion_create)
 print(instruccion_create)
 
 
    
-
+import time
+print (time.strftime("%d/%m/%y"), time.strftime("%H:%M:%S"))
 
 
 

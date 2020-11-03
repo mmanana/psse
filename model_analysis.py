@@ -492,10 +492,10 @@ GENERADORES_132_DF.to_csv(ruta + r"\datos_generadores132_zona_Viesgo.csv",  deci
 ##############################################################################
 # #Definición de la conexión con la DB
 #conn = pyodbc.connect('Driver={SQL Server};'
-#                      'Server=193.144.190.81;'
-#                      'Database=Simulaciones_2020;'
-#                      'UID=user;'
-#                      'PWD=1234')
+#                      'Server=;'
+#                      'Database=;'
+#                      'UID=;'
+#                      'PWD=')
 #                      #'Trusted_Connection=yes;')
 #
 #cursor = conn.cursor()
