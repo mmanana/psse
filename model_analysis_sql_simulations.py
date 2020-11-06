@@ -20,10 +20,13 @@ Created on Tue Nov  3 16:43:45 2020
 import sys
 print(sys.version)
 
+<<<<<<< HEAD
 import time
 print (time.strftime("%d/%m/%y"), time.strftime("%H:%M:%S"))
 # Tarda 15min en hacer 1000 simulacioens.
 
+=======
+>>>>>>> c25174ab9cb15bb7cda6e9ffac225fdac3a8d623
 ##############################################################################
 ## Instrucciones que permiten la ejecucion de los comandos de Python sin
 ## arrancar PSS/E
@@ -92,6 +95,7 @@ df_lineas132_viesgo = pd.read_csv(archivo_lineas, encoding='Latin9', header=0, s
 ## Recorrer las líneas de 132 kV de la zona Viesgo y guardar los resultados en
 ## las tablas SQL
 #############################################################################
+<<<<<<< HEAD
 #Definición de la conexión con la DB
 archivo_config = ruta + r"\Config.txt"
 f = open (archivo_config,'r')
@@ -106,6 +110,14 @@ conn = pyodbc.connect('Driver={SQL Server};'
                       'Database=' + db_server + ';'
                       'UID=' + usr_server + ';'
                       'PWD=' + pwd_server)
+=======
+ #Definición de la conexión con la DB
+conn = pyodbc.connect('Driver={SQL Server};'
+                      'Server=193.144.190.81;'
+                      'Database=Simulaciones_2020;'
+                      'UID=user;'
+                      'PWD=1234')
+>>>>>>> c25174ab9cb15bb7cda6e9ffac225fdac3a8d623
                       #'Trusted_Connection=yes;')
 
 cursor = conn.cursor()
@@ -132,10 +144,17 @@ for idx, lineas in df_lineas132_viesgo.iterrows():
 #    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, AMPS, P, Q) VALUES (-1, " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
 #    print(instruccion_insert)
     nombre_tabla = "OUTPUT_AMPS_P_Q_RATE_LAT_132"
+<<<<<<< HEAD
     instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, Subestacion_1, To_Bus_Number, Subestacion_2, Linea_ID, AMPS, P_MW, Q_MVAR, Indice_Carga) VALUES (-1, " + str(lineas['From Bus Number']) + ", '" + str(lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(lineas['To Bus Number']) + ", '" + str(lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_')) + "', '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"#str(rval_AMPS*100/lineas['Rate1 (MVA)']) + ");"
     
 #    cursor.execute(instruccion_insert)
 #    conn.commit()
+=======
+    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, Subestacion_1, To_Bus_Number, Subestacion_2, Linea_ID, AMPS, P_MW, Q_MVAR, RATE_PERC) VALUES (-1, " + str(lineas['From Bus Number']) + ", '" + str(lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(lineas['To Bus Number']) + ", '" + str(lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_')) + "', '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"#str(rval_AMPS*100/lineas['Rate1 (MVA)']) + ");"
+    
+    cursor.execute(instruccion_insert)
+    conn.commit()
+>>>>>>> c25174ab9cb15bb7cda6e9ffac225fdac3a8d623
     
     
 
@@ -167,8 +186,13 @@ for nb in TENSION_BUSES_132:
     nombre_tabla = "OUTPUT_KV_BUSES_132"
     instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, Subestacion, KV) VALUES (-1, " + str(nb[0]) + ", '" + str(nb[1].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(nb[3]) + ");"
 #    print(instruccion_insert)
+<<<<<<< HEAD
 #    cursor.execute(instruccion_insert)
 #    conn.commit()
+=======
+    cursor.execute(instruccion_insert)
+    conn.commit()
+>>>>>>> c25174ab9cb15bb7cda6e9ffac225fdac3a8d623
 
 
 cursor.close()
@@ -189,11 +213,16 @@ del cursor
 #Extracción de datos del SQL
 cursor = conn.cursor()
 nombre_tabla_info = "INPUT_ESCENARIOS_GENERADORES"
+<<<<<<< HEAD
 #num_escenarios = 1000 #[1, 2, 3]
 num_escenarios = 3000
 #for id_esc in range(0,num_escenarios):
 #for id_esc in range(0, num_escenarios):#num_escenarios:
 for id_esc in range(15000, 15000 + num_escenarios):
+=======
+num_escenarios = 3 #[1, 2, 3]
+for id_esc in range(0, num_escenarios):#num_escenarios:
+>>>>>>> c25174ab9cb15bb7cda6e9ffac225fdac3a8d623
     SQL_Query = pd.read_sql_query('''SELECT ALL [ID_Escenario],[Bus_Number],[Bus_Name],[ID_Generador],[Porc_simulacion],[P_MW_simulacion] FROM [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] where ID_Escenario = ''' + str(id_esc), conn)
     df_escenario = pd.DataFrame(SQL_Query, columns=['ID_Escenario','Bus_Number','BUS_Name','ID_Generador','P_MW_simulacion'])
     
@@ -235,7 +264,11 @@ for id_esc in range(15000, 15000 + num_escenarios):
         #    print(instruccion_insert)
             nombre_tabla = "OUTPUT_AMPS_P_Q_RATE_LAT_132"
     #        instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, To_Bus_Number, Linea_ID, AMPS, P_MW, Q_MVAR, RATE_PERC) VALUES (" + str(id_esc) + ", " + str(lineas['From Bus Number']) + ", " + str(lineas['To Bus Number']) + ", '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"
+<<<<<<< HEAD
             instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, Subestacion_1, To_Bus_Number, Subestacion_2, Linea_ID, AMPS, P_MW, Q_MVAR, Indice_Carga) VALUES (" + str(id_esc) + ", " + str(lineas['From Bus Number']) + ", '" + str(lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(lineas['To Bus Number']) + ", '" + str(lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_')) + "', '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"#str(rval_AMPS*100/lineas['Rate1 (MVA)']) + ");"
+=======
+            instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, Subestacion_1, To_Bus_Number, Subestacion_2, Linea_ID, AMPS, P_MW, Q_MVAR, RATE_PERC) VALUES (" + str(id_esc) + ", " + str(lineas['From Bus Number']) + ", '" + str(lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(lineas['To Bus Number']) + ", '" + str(lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_')) + "', '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"#str(rval_AMPS*100/lineas['Rate1 (MVA)']) + ");"
+>>>>>>> c25174ab9cb15bb7cda6e9ffac225fdac3a8d623
             
             cursor.execute(instruccion_insert)
             conn.commit()
@@ -249,6 +282,7 @@ for id_esc in range(15000, 15000 + num_escenarios):
         #    print(instruccion_insert)
             cursor.execute(instruccion_insert)
             conn.commit()
+<<<<<<< HEAD
     import time
     print (time.strftime("%d/%m/%y"), time.strftime("%H:%M:%S"))
         
@@ -261,3 +295,9 @@ print (time.strftime("%d/%m/%y"), time.strftime("%H:%M:%S"))
 
 ##Hora de inicio: ('04/11/20', '09:13:24')
 #('04/11/20', '09:28:28')
+=======
+        
+
+cursor.close()
+del cursor
+>>>>>>> c25174ab9cb15bb7cda6e9ffac225fdac3a8d623
