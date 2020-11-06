@@ -20,13 +20,11 @@ Created on Tue Nov  3 16:43:45 2020
 import sys
 print(sys.version)
 
-<<<<<<< HEAD
 import time
 print (time.strftime("%d/%m/%y"), time.strftime("%H:%M:%S"))
 # Tarda 15min en hacer 1000 simulacioens.
 
-=======
->>>>>>> c25174ab9cb15bb7cda6e9ffac225fdac3a8d623
+
 ##############################################################################
 ## Instrucciones que permiten la ejecucion de los comandos de Python sin
 ## arrancar PSS/E
@@ -95,7 +93,7 @@ df_lineas132_viesgo = pd.read_csv(archivo_lineas, encoding='Latin9', header=0, s
 ## Recorrer las líneas de 132 kV de la zona Viesgo y guardar los resultados en
 ## las tablas SQL
 #############################################################################
-<<<<<<< HEAD
+
 #Definición de la conexión con la DB
 archivo_config = ruta + r"\Config.txt"
 f = open (archivo_config,'r')
@@ -110,6 +108,8 @@ conn = pyodbc.connect('Driver={SQL Server};'
                       'Database=' + db_server + ';'
                       'UID=' + usr_server + ';'
                       'PWD=' + pwd_server)
+                      #'Trusted_Connection=yes;')
+
 
 cursor = conn.cursor()
 
