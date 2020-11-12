@@ -84,7 +84,6 @@ ierr, busvoltages = psspy.abusreal(sid=-1, string="BASE")
 
 
 
-
 ##############################################################################
 ## Instrucciones para recorrer todos los buses y almacenar aquellos que
 ## verifiquen el criterio de tension base = 132 kV
@@ -159,7 +158,6 @@ print '\n\n---------------------------------------\n'
 
 
 
-
 ##############################################################################
 ## Instrucciones para obtener las líneas conectadas a los buses de 55 kV
 ## MODIFICADO. Los if originales no incluían las líneas dobles ACTIVAS.
@@ -188,7 +186,6 @@ print '\n\n---------------------------------------\n'
     
     
     
-
 
 ##############################################################################
 ## Instrucciones para obtener los valores de las líneas de 132 kV
