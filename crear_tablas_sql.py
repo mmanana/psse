@@ -182,7 +182,6 @@ print(instruccion_create)
 
 
    
-import time
 print (time.strftime("%d/%m/%y"), time.strftime("%H:%M:%S"))
 
 
