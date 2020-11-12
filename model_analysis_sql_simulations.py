@@ -175,15 +175,8 @@ for nb in TENSION_BUSES_132:
 #    print(nb[0])
     nombre_tabla = "OUTPUT_KV_BUSES_132"
     instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, Subestacion, KV) VALUES (-1, " + str(nb[0]) + ", '" + str(nb[1].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(nb[3]) + ");"
-#    print(instruccion_insert)
-
 #    cursor.execute(instruccion_insert)
 #    conn.commit()
-
-    cursor.execute(instruccion_insert)
-    conn.commit()
-
-
 
 cursor.close()
 del cursor
@@ -207,9 +200,7 @@ nombre_tabla_info = "INPUT_ESCENARIOS_GENERADORES"
 #num_escenarios = 1000 #[1, 2, 3]
 num_escenarios = 3000
 #for id_esc in range(0,num_escenarios):
-#for id_esc in range(0, num_escenarios):#num_escenarios:
 for id_esc in range(18000, 18000 + num_escenarios):
-#for id_esc in range(0, num_escenarios):#num_escenarios:
 
     SQL_Query = pd.read_sql_query('''SELECT ALL [ID_Escenario],[Bus_Number],[Bus_Name],[ID_Generador],[Porc_simulacion],[P_MW_simulacion] FROM [Simulaciones_2020].[dbo].[''' + nombre_tabla_info + '''] where ID_Escenario = ''' + str(id_esc), conn)
     df_escenario = pd.DataFrame(SQL_Query, columns=['ID_Escenario','Bus_Number','BUS_Name','ID_Generador','P_MW_simulacion'])
@@ -251,19 +242,12 @@ for id_esc in range(18000, 18000 + num_escenarios):
         #    instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, AMPS, P, Q) VALUES (-1, " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ");"
         #    print(instruccion_insert)
             nombre_tabla = "OUTPUT_AMPS_P_Q_RATE_LAT_132"
-    #        instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, To_Bus_Number, Linea_ID, AMPS, P_MW, Q_MVAR, RATE_PERC) VALUES (" + str(id_esc) + ", " + str(lineas['From Bus Number']) + ", " + str(lineas['To Bus Number']) + ", '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"
-
             instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, Subestacion_1, To_Bus_Number, Subestacion_2, Linea_ID, AMPS, P_MW, Q_MVAR, Indice_Carga) VALUES (" + str(id_esc) + ", " + str(lineas['From Bus Number']) + ", '" + str(lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(lineas['To Bus Number']) + ", '" + str(lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_')) + "', '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"#str(rval_AMPS*100/lineas['Rate1 (MVA)']) + ");"
-
-#            instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, From_Bus_Number, Subestacion_1, To_Bus_Number, Subestacion_2, Linea_ID, AMPS, P_MW, Q_MVAR, RATE_PERC) VALUES (" + str(id_esc) + ", " + str(lineas['From Bus Number']) + ", '" + str(lineas['Subestacion 1'].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(lineas['To Bus Number']) + ", '" + str(lineas['Subestacion 2'].strip(' ').replace(' ','_').replace('.','_')) + "', '" + str(lineas['Linea ID']) + "', " + str(rval_AMPS) + ", " + str(rval_P) + ", " + str(rval_Q) + ", " + str(rate_MVA_Perc) + ");"#str(rval_AMPS*100/lineas['Rate1 (MVA)']) + ");"
-
-            
             cursor.execute(instruccion_insert)
             conn.commit()
         
         #Se recorre la lista de buses para guardar las tensiones en el SQL
         for nb in TENSION_BUSES_132:
-        #    print(nb[0])
             nombre_tabla = "OUTPUT_KV_BUSES_132"
     #        instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, KV) VALUES (" + str(id_esc) + ", " + str(nb[0]) + ", " + str(nb[3]) + ");"
             instruccion_insert = "INSERT INTO " + nombre_tabla + " (ID_Escenario, Bus_Number, Subestacion, KV) VALUES (" + str(id_esc) + ", " + str(nb[0]) + ", '" + str(nb[1].strip(' ').replace(' ','_').replace('.','_')) + "', " + str(nb[3]) + ");"
@@ -271,7 +255,7 @@ for id_esc in range(18000, 18000 + num_escenarios):
             cursor.execute(instruccion_insert)
             conn.commit()
 
-    print (time.strftime("%d/%m/%y"), time.strftime("%H:%M:%S"))
+#    print (time.strftime("%d/%m/%y"), time.strftime("%H:%M:%S"))
         
 
 cursor.close()
